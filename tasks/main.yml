@@ -7,6 +7,13 @@
   register: nginx_version
   changed_when: no
   
-- copy: src=mit-default-https.conf-{{ nginx_version.stdout }} dest=/etc/nginx/conf.d/mit-default-https.conf
-  notify: Restart nginx  
+- name: Copy local-mit-default-https.conf
+  copy:
+    src: local-mit-default-https.conf-{{ nginx_version.stdout }}
+    dest: /etc/nginx/conf.d/local-mit-default-https.conf
+  notify: Reload nginx  
+
+- name: Remove deprecated mit-default-https.conf
+  file: path=/etc/nginx/conf.d/mit-default-https.conf state=absent
+  notify: Reload nginx
 
