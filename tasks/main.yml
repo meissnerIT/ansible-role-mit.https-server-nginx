@@ -28,11 +28,14 @@
   notify: Reload nginx
   when: nginx_version.stdout is version_compare('1.14', operator='<')
 
-- name: Disable ssl_protocols < TLSv1.2 (nginx >= 1.14)
-  lineinfile:
+# The options below are included in local-mit-default-https.conf-VERSION
+# and need to be removed from nginx.conf to avoid collisions.
+- name: Remove colliding global options
+  ansible.builtin.lineinfile:
     dest: /etc/nginx/nginx.conf
-    regexp: '^	ssl_protocols '
-    line: '	ssl_protocols TLSv1.2 TLSv1.3; #20250: Dropping protocols < TLSv1.2'
+    regexp: '^\s*(gzip|ssl_prefer_server_ciphers|ssl_protocols)\s'
+    state: absent
+    mode: '0644'
   notify: Reload nginx
   when: nginx_version.stdout is version_compare('1.14', operator='>=')
 
