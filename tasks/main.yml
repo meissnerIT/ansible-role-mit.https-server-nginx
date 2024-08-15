@@ -1,20 +1,26 @@
 ---
 
-- command: openssl dhparam -out /etc/ssl/certs/dhparams-16073.pem 2048 creates=/etc/ssl/certs/dhparams-16073.pem
+# Even on FreeBSD we use /etc/ssl/certs
+- name: Generate dhparams-16073.pem
+  ansible.builtin.command: openssl dhparam -out /etc/ssl/certs/dhparams-16073.pem 2048
+  args:
+    creates: "/etc/ssl/certs/dhparams-16073.pem"
 
 - name: Get nginx version
-  shell: /usr/sbin/nginx -v 2>&1 | cut -d/ -f2
+  shell: nginx -v 2>&1 | cut -d/ -f2
   register: nginx_version
   changed_when: no
 
 - name: Copy local-mit-default-https.conf
   copy:
     src: local-mit-default-https.conf-{{ nginx_version.stdout }}
-    dest: /etc/nginx/conf.d/local-mit-default-https.conf
+    dest: "{{ etc_prefix }}/etc/nginx/conf.d/local-mit-default-https.conf"
   notify: Reload nginx
 
 - name: Remove deprecated mit-default-https.conf
-  file: path=/etc/nginx/conf.d/mit-default-https.conf state=absent
+  file:
+    path: "{{ etc_prefix }}/etc/nginx/conf.d/mit-default-https.conf"
+    state: absent
   notify: Reload nginx
 
 # - debug: msg="{{ nginx_version }}"
@@ -22,7 +28,7 @@
 # Debian 9 / nginx 1.10 doesn't support TLSv1.3
 - name: Disable ssl_protocols < TLSv1.2 (nginx < 1.14)
   lineinfile:
-    dest: /etc/nginx/nginx.conf
+    dest: "{{ etc_prefix }}/etc/nginx/nginx.conf"
     regexp: '^	ssl_protocols '
     line: '	ssl_protocols TLSv1.2; #20250: Dropping protocols < TLSv1.2'
   notify: Reload nginx
@@ -32,7 +38,7 @@
 # and need to be removed from nginx.conf to avoid collisions.
 - name: Remove colliding global options
   ansible.builtin.lineinfile:
-    dest: /etc/nginx/nginx.conf
+    dest: '{{ etc_prefix }}/etc/nginx/nginx.conf'
     regexp: '^\s*(gzip|ssl_prefer_server_ciphers|ssl_protocols)\s'
     state: absent
     mode: '0644'
