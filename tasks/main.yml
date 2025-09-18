@@ -1,12 +1,19 @@
 ---
-# Even on FreeBSD we use /etc/ssl/certs
+- name: Create {{ etc_prefix }}/etc/ssl/certs/ # noqa: name[template]
+  ansible.builtin.file:
+    path: "{{ etc_prefix }}/etc/ssl/certs/"
+    state: directory
+    mode: "755"
+
 - name: Generate dhparams-16073.pem
-  ansible.builtin.command: openssl dhparam -out /etc/ssl/certs/dhparams-16073.pem 2048
+  ansible.builtin.command: openssl dhparam -out {{ etc_prefix }}/etc/ssl/certs/dhparams-16073.pem 2048
   args:
-    creates: /etc/ssl/certs/dhparams-16073.pem
+    creates: "{{ etc_prefix }}/etc/ssl/certs/dhparams-16073.pem"
 
 - name: Get nginx version
-  ansible.builtin.shell: nginx -v 2>&1 | cut -d/ -f2
+  ansible.builtin.shell: set -o pipefail && nginx -v 2>&1 | cut -d/ -f2
+  args:
+    executable: "{{ default_shell }}"
   register: nginx_version
   changed_when: false
 
@@ -14,6 +21,7 @@
   ansible.builtin.template:
     src: local-mit-default-https.conf-{{ nginx_version.stdout }}
     dest: "{{ etc_prefix }}/etc/nginx/conf.d/local-mit-default-https.conf"
+    mode: "644"
   notify: Reload nginx
 
 - name: Remove deprecated mit-default-https.conf
@@ -23,7 +31,7 @@
   notify: Reload nginx
 
 # - debug: msg="{{ nginx_version }}"
-#20250: ssl_protocols < TLSv1.2 sollten ab 2020-01 nicht mehr unterstuetzt werden
+# ssl_protocols < TLSv1.2 sollten ab 2020-01 nicht mehr unterstuetzt werden [MIT-20250]
 # Debian 9 / nginx 1.10 doesn't support TLSv1.3
 - name: Disable ssl_protocols < TLSv1.2 (nginx < 1.14)
   ansible.builtin.lineinfile:
